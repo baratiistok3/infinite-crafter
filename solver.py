@@ -1,4 +1,5 @@
 import requests
+import time
 from time import sleep
 from random import random, shuffle, sample
 from itertools import product
@@ -17,7 +18,7 @@ CREATION_TREE = 'creation_tree.json'
 TRIED = 'tried.txt'
 FIRST_DISCOVERIES = 'first_discoveries.txt'
 
-DELAY = None  # optional delay between requests, in seconds
+DELAY = 5  # optional delay between requests, in seconds
 
 
 # ANSI escape codes for colored text
@@ -47,9 +48,10 @@ def solve():
     else:
         print(f'{C.RED}Running with a delay of {DELAY} seconds!{C.RESET}')
     print()
-
+    end = time.time()
     # try every combination of the available items not already tried
     while True:
+        start = time.time()
         item1, item2 = sample(available_items, 2)
         if (item1, item2) in tried:
             continue
@@ -94,14 +96,17 @@ def solve():
 
         # if the result is new, add it to the available items and try it with the other available items
         if result not in available_items:
-
             # add the result to the creation tree and available items
             available_items.append(result)
             creation_tree[result] = [item1, item2]
             print(f'\tItem {C.GREEN}#{len(available_items)}{C.RESET} @ depth {C.GREEN}{find_depth(creation_tree, result)}{C.RESET}')
             if CREATION_TREE:
-                with open(CREATION_TREE, 'w') as f:
-                    f.write(dumps(creation_tree, indent=2))
+                with open(CREATION_TREE, 'a') as f:
+                    f.write(dumps({result: creation_tree[result]}, indent=2).replace("\n", ""))
+                    f.write("\n")
+
+        end = time.time()
+        print(format(end - start, ".2f") + " ", end="")
 
 
 
@@ -112,13 +117,15 @@ def load_files():
     available_items = ['Water', 'Fire', 'Wind', 'Earth']
     try:
         with open(CREATION_TREE, 'r') as f:
-            creation_tree = loads(f.read().strip())
+            for line in f:
+                creation = loads(line)
+                creation_tree.update(creation)
             available_items.extend(creation_tree.keys())
         print(f'{C.GREEN}Loaded {CREATION_TREE} with {len(available_items)} items!{C.RESET}')
     except FileNotFoundError:
         print(f'{C.RED}Creation tree save not found, using defaults: {C.YELLOW}{", ".join(available_items)}{C.RESET}')
         with open(CREATION_TREE, 'w') as f:
-            f.write(dumps(creation_tree, indent=2))
+            f.write("")
 
     tried = []
     try:
